@@ -11,7 +11,7 @@ import pandas as pd
 import os
 
 # import path for raw data within this project
-import_path = os.getcwd() + '/Global_Energy/data/raw/'
+import_path = os.getcwd() + '/Global_Energy_EDA/data/raw/'
 
 
 # filenames to be imported with NaNs specific to imported files  
