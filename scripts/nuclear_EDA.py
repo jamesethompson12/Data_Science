@@ -8,7 +8,14 @@ Created on Fri Oct 18 14:20:08 2018
 
 
 import pandas as pd
+from matplotlib import pyplot as plt
+from matplotlib import pylab
 import os
+
+
+# ---------------------------------------------------------------------
+# Data import and cleansing for EDA
+# ---------------------------------------------------------------------
 
 # import path for raw data within this project
 import_path = os.getcwd() + '/Global_Energy_EDA/data/raw/'
@@ -23,7 +30,7 @@ na_vals=['', '-', 'n/a', '^', '_']
 # create the full filename(s) with path and extension
 files = [import_path + file + '.csv' for file in filenames]
 
-generation_df = pd.read_csv(files[0], na_values=na_vals, skiprows=2, skipfooter=14, engine='python')
+generation_df = pd.read_csv(files[0], na_values=na_vals, skiprows=2, skipfooter=14, engine='python', parse_dates=True)
 consumption_df = pd.read_csv(files[1], na_values=na_vals, skiprows=2, skipfooter=14, engine='python')
 
 
@@ -52,12 +59,42 @@ def data_cleanse(dataframe) :
 generation_df = data_cleanse(generation_df)
 consumption_df = data_cleanse(consumption_df)
 
+# ensure the indexes for both dataframes match
+if generation_df.index.values.tolist() != consumption_df.index.values.tolist() :
+    generation_df.set_index(consumption_df.index)
+else: print('Dataframes\' indexes match!')
 
+# tidy data format: transpose the dataframes to make observations by year and countries as factors
+
+def rename_cols(dataframe, col_position, new_label):
+    col_vals = dataframe.columns.values.tolist()
+    return col_vals
+
+generation_df_yr = generation_df.transpose()
+#generation_df_yr.columns[0] = 'Country'
+
+consumption_df_yr = consumption_df.transpose()
+#consumption_df_yr.columns[0] = 'Country'
+
+# generate datetime index to substitute year text in indexes
+coldates = pd.date_range(start='1965-01-01', end='2017-01-01', periods=53)
+
+generation_df_yr['year'] = coldates
+generation_df_yr.set_index('year', inplace=True)
+
+consumption_df_yr['year'] = coldates
+consumption_df_yr.set_index('year', inplace=True)
+
+
+
+# ---------------------------------------------------------------------
+# EDA
+# ---------------------------------------------------------------------
 
 def report_complete_countries(dataframe, start = '', end = ''):
     """ Return a list of countries with complete entries for the specified 
         time (or throughout by default)"""
-    #if time period specified, 
+    # if time period specified, 
     if len(start) > 0 and len(end) > 0 :
         dataframe = dataframe.loc[:, start : end]
         
@@ -67,10 +104,63 @@ def report_complete_countries(dataframe, start = '', end = ''):
     
 
 
-
+# check to see if the list of countries recording measured values over the last ten years is the same for the last 10 yrs.
 ten_years_gen = report_complete_countries(generation_df, '2007', '2017')
 ten_years_con = report_complete_countries(consumption_df, '2007', '2017')
+ten_years_match = ten_years_gen == ten_years_con
 
-print(ten_years_gen == ten_years_con)
 
-# 
+
+# conversion of million tonnes oil equivalent (consumption) to terawatt-hours (generation)
+#ter_w_hrs = 1.163 * 10**-5
+ter_w_hrs = 4.4 # according to units conversion provided with data
+
+countries_list = consumption_df.index.values.tolist()
+europe_list = countries_list[14:46]
+
+consumption_eu_std = consumption_df_yr.loc[:, europe_list] * ter_w_hrs
+
+
+# filter dfs for top results
+top_consumers_eu = pd.Series(consumption_eu_std.sum())
+top_consumers_eu = top_consumers_eu[top_consumers_eu > 0].sort_values(ascending=False)
+
+consumption_eu_std = consumption_eu_std.loc[:, top_consumers_eu.index]
+generation_eu = generation_df_yr.loc[:, top_consumers_eu.index]
+
+
+# save figures in figs directory
+fig_dir = os.getcwd() + '/Global_Energy_EDA/figs/'
+
+# plot graphs for consumption and generation within EU countries, in descending order of proportion consumed
+consumption_eu_std.plot(title='European Nuclear Energy Consumption')
+pylab.xlabel('Year')
+pylab.ylabel('Energy consumption (twh)')
+plt.legend(bbox_to_anchor=(1, 1))
+# save and show 
+pylab.savefig(fig_dir + 'europe_consumption.png')
+plt.show()
+plt.clf()
+
+generation_eu.plot(title='European Nuclear Energy Production')
+pylab.xlabel('Year')
+pylab.ylabel('Energy generation [twh]')
+plt.legend(bbox_to_anchor=(1, 1))
+# save and show 
+pylab.savefig(fig_dir + 'europe_production.png')
+plt.show()
+plt.clf()
+
+# plot graph of po=roportions consumed / produced per year
+prop_consumption_df = consumption_eu_std / generation_df_yr
+prop_consumption_df = prop_consumption_df.loc['1975':'2017', top_consumers_eu.index]
+prop_consumption_df.dropna(inplace=True, how='all', axis=1)
+prop_consumption_df.plot(title='Ratio of Produced:Consumed for Nuclear Energy in Europe')
+pylab.xlabel('Year')
+pylab.ylabel('Proportion of produced energy consumed')
+plt.legend(bbox_to_anchor=(1, 1))
+# save and show 
+pylab.savefig(fig_dir + 'europe_proportion.png')
+plt.show()
+
+
