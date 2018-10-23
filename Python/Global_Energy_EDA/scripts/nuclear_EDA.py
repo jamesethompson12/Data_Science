@@ -138,7 +138,7 @@ pylab.xlabel('Year')
 pylab.ylabel('Energy consumption (twh)')
 plt.legend(bbox_to_anchor=(1, 1))
 # save and show 
-pylab.savefig(fig_dir + 'europe_consumption.png')
+pylab.savefig(fig_dir + 'europe_consumption.png', bbox_inches='tight')
 plt.show()
 plt.clf()
 
@@ -147,20 +147,23 @@ pylab.xlabel('Year')
 pylab.ylabel('Energy generation [twh]')
 plt.legend(bbox_to_anchor=(1, 1))
 # save and show 
-pylab.savefig(fig_dir + 'europe_production.png')
+pylab.savefig(fig_dir + 'europe_production.png', bbox_inches='tight')
 plt.show()
 plt.clf()
 
 # plot graph of po=roportions consumed / produced per year
 prop_consumption_df = consumption_eu_std / generation_df_yr
 prop_consumption_df = prop_consumption_df.loc['1975':'2017', top_consumers_eu.index]
-prop_consumption_df.dropna(inplace=True, how='all', axis=1)
-prop_consumption_df.plot(title='Ratio of Produced:Consumed for Nuclear Energy in Europe')
+
+# resample to show means over 5yr periods (showing average suprlus or defecit per 5yr period by country)
+prop_consumption_df = prop_consumption_df[:].resample('5Y').mean()
+
+prop_consumption_df.plot(title='Mean Ratio of Produced:Consumed for Nuclear Energy in Europe')
 pylab.xlabel('Year')
-pylab.ylabel('Proportion of produced energy consumed')
+pylab.ylabel('Proportion of produced energy consumed (mean / 5yr)')
 plt.legend(bbox_to_anchor=(1, 1))
 # save and show 
-pylab.savefig(fig_dir + 'europe_proportion.png')
+pylab.savefig(fig_dir + 'europe_proportion_5yr_mean.png', bbox_inches='tight')
 plt.show()
 
 
